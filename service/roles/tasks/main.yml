@@ -1,0 +1,37 @@
+- name: Pull Docker image from Docker Hub
+  community.docker.docker_image:
+    name: "{{ docker_image }}"
+    tag: "{{ docker_version }}"
+    source: pull
+  become: true
+
+- name: Stop and remove existing container
+  community.docker.docker_container:
+    name: "{{ container_name }}"
+    state: absent
+  ignore_errors: yes
+
+- name: Run application container
+  community.docker.docker_container:
+    name: "{{ container_name }}"
+    image: "{{ docker_image }}:{{ docker_version | default('latest') }}"
+    state: started
+    restart_policy: always
+    published_ports: "{{ ports }}"
+
+- name: Create systemd unit from template
+  template:
+    src: service.service.j2
+    dest: /etc/systemd/system/{{ service_name }}.service
+    mode: '0644'
+  notify: restart service
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+
+- name: Ensure service enabled and started
+  systemd:
+    name: "{{ service_name }}"
+    state: started
+    enabled: yes

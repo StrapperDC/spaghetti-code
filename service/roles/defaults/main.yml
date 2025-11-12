@@ -1,0 +1,7 @@
+---
+service_name: my-service
+docker_image: "attaka/finalproject"
+docker_version: "latest"
+container_name: "{{ service_name }}-container"
+ports:
+  - "80:8080"

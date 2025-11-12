@@ -1,0 +1,18 @@
+- hosts: app
+  become: true
+  roles:
+    - docker-host
+    - ../../service/roles
+#- hosts: app
+#  become: true
+#  tasks:
+#    - name: pull docker image for the app
+#      ansible.builtin.command: docker pull "{{ app_image }}"
+#      environment: {}
+#    - name: run container (recreate)
+#      ansible.builtin.shell: >
+#        docker rm -f app_container || true;
+#        docker run -d --name app_container -p 80:80 --restart unless-stopped {{ app_image }}
+#      args:
+#        warn: false
+

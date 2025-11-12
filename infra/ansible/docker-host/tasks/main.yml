@@ -1,0 +1,76 @@
+---
+
+- name: Remove old Docker repository files if exist
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /etc/apt/sources.list.d/docker.list
+    - /etc/apt/sources.list.d/docker.list.save
+    - /etc/apt/keyrings/docker.gpg
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install dependencies
+  apt:
+    name:
+      - curl
+      - ca-certificates
+      - gnupg
+      - lsb-release
+    state: present
+    update_cache: yes
+
+- name: Install Docker using official script
+  shell: |
+    curl -fsSL https://get.docker.com | sh
+  args:
+    creates: /usr/bin/docker
+
+- name: Ensure docker service is running
+  service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Add ansible_user to docker group
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: true
+
+#- name: Create app directory
+#  file:
+#    path: /opt/myapp
+#    state: directory
+#    owner: "{{ ansible_user }}"
+#    group: "{{ ansible_user }}"
+#    mode: '0755'
+#
+#- name: Copy application files
+#  copy:
+#    src: ../Final_project/
+#    dest: /opt/myapp/
+#    owner: "{{ ansible_user }}"
+#    group: "{{ ansible_user }}"
+#    mode: '0644'
+#
+#- name: Build docker image locally
+#  community.docker.docker_image:
+#    name: myapp
+#    tag: latest
+#    source: build
+#    build:
+#      path: /opt/myapp
+#      dockerfile: /opt/myapp/Dockerfile
+#
+#- name: Run application container
+#  community.docker.docker_container:
+#    name: myapp
+#    image: myapp:latest
+#    state: started
+#    restart_policy: always
+#    published_ports:
+#      - "80:8080"

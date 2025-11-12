@@ -1,0 +1,14 @@
+[Unit]
+Description={{ service_name }} (docker)
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Restart=always
+ExecStartPre=-/usr/bin/docker rm -f {{ container_name }}
+ExecStart=/usr/bin/docker run --name {{ container_name }} {% for p in ports %}-p {{ p }} {% endfor %} {{ docker_image }}:{{ docker_version | default('latest') }}
+ExecStop=/usr/bin/docker stop {{ container_name }}
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
