@@ -1,0 +1,22 @@
+external_url '{{ gitlab_external_url }}'
+
+# Базовые настройки
+gitlab_rails['time_zone'] = 'UTC'
+gitlab_rails['gitlab_email_enabled'] = false
+
+# Отключим HTTPS для упрощения
+nginx['redirect_http_to_https'] = false
+nginx['listen_https'] = false
+
+# Настройки для экономии памяти (важно для VM)
+puma['worker_processes'] = 2
+sidekiq['max_concurrency'] = 10
+postgresql['shared_buffers'] = "256MB"
+postgresql['max_connections'] = 200
+
+# Отключим необязательные службы для экономии ресурсов
+prometheus_monitoring['enable'] = false
+mattermost['enable'] = false
+
+# Настройки для первого запуска
+gitlab_rails['initial_root_password'] = "{{ gitlab_root_password | default('ChangeMe123!') }}"

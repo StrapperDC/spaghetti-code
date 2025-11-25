@@ -1,0 +1,4 @@
+---
+gitlab_address: "http://cikapibarartest.duckdns.org/"
+gitlab_token: "{{ lookup('env','RUNNER_TOKEN') }}"
+runner_name: "shell_runner"

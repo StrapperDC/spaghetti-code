@@ -1,0 +1,40 @@
+- hosts: all
+  become: yes
+
+  tasks:
+    - name: Ensure deploy path exists
+      file:
+        path: "{{ target_path }}"
+        state: directory
+        mode: "0755"
+
+    - name: Upload binary
+      copy:
+        src: app
+        dest: "{{ target_path }}/app"
+        mode: "0755"
+
+    - name: Install systemd unit
+      copy:
+        dest: /etc/systemd/system/spaghetti.service
+        content: |
+          [Unit]
+          Description=Spaghetti Go Service
+          After=network.target
+
+          [Service]
+          ExecStart={{ target_path }}/app
+          Restart=always
+          User=root
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd
+      command: systemctl daemon-reload
+
+    - name: Restart service
+      systemd:
+        name: spaghetti
+        state: restarted
+        enabled: yes

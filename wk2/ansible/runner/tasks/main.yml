@@ -1,0 +1,86 @@
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Disable strict host key checking for gitlab-runner
+  copy:
+    dest: /home/gitlab-runner/.ssh/config
+    content: |
+      Host *
+        StrictHostKeyChecking no
+        UserKnownHostsFile=/dev/null
+    owner: gitlab-runner
+    group: gitlab-runner
+    mode: '0600'
+
+- name: Read GitLab runner registration token via Rails API
+  shell: >
+    gitlab-rails runner
+    "puts ApplicationSetting.current.runners_registration_token"
+  register: runner_token_cmd
+  args:
+    executable: /bin/bash
+  become: yes
+
+- name: Set runner token fact
+  set_fact:
+    gitlab_token: "{{ runner_token_cmd.stdout | trim }}"
+
+- name: Add the official GitLab repository
+  shell: export os=ubuntu && \
+    export dist=jammy && \
+    curl -L "https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh" | bash -E
+
+- name: Install GitLab Runner
+  apt:
+    name:
+      - gitlab-runner
+    state: present
+    update_cache: yes
+
+- name: Install Go
+  become: yes
+  ansible.builtin.apt:
+    name: golang-go
+    state: present
+    update_cache: yes
+
+- name: Install dependencies
+  apt:
+    name:
+      - ssh
+      - curl
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - ansible
+      - sshpass
+    state: present
+    update_cache: yes
+
+- name: Install Docker using official script
+  shell: |
+    curl -fsSL https://get.docker.com | sh
+  args:
+    creates: /usr/bin/docker
+
+- name: Ensure docker service is running
+  service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Register runner
+  shell: >
+    gitlab-runner register
+    --non-interactive
+    --url "{{ gitlab_address }}"
+    --registration-token "{{ gitlab_token }}"
+    --executor "shell"
+    --description "{{ runner_name }}"
+  become: yes
+
+- name: Add runner to docker group
+  shell: usermod -aG docker gitlab-runner
+  notify:
+    - restart runner

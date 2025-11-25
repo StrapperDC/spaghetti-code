@@ -1,0 +1,69 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  GIT_STRATEGY: clone
+  GIT_DEPTH: "20"
+  GO_VERSION: "1.22"
+  # Кеширование модулей Go
+  GOMODCACHE: "$CI_PROJECT_DIR/.cache"
+
+cache:
+  paths:
+    - .cache/
+
+before_script:
+  # Добавляем Go в PATH, если раннер установил Go по /usr/local/go
+  - export PATH="/usr/local/go/bin:$PATH"
+
+build:
+  stage: build
+  script:
+    - cd ./wk2/Final_project
+    - go mod tidy
+    - go build -o app ./cmd/server
+  artifacts:
+    paths:
+      - app
+
+test:
+  stage: test
+  script:
+    - export PATH="/usr/local/go/bin:$PATH"
+    - cd ./wk2/Final_project
+    - echo "=== Setting up permissions ==="
+    - chmod -R +x ./scripts/  # Даем права на все скрипты
+    - ls -la ./scripts/        # Проверяем права
+    - chmod +x ./run-tests.sh
+    - ./run-tests.sh
+
+deploy:
+  stage: deploy
+  only:
+    - main
+    - uat
+  script:
+    - cd infra/ansible/
+deploy:
+  stage: deploy
+  script:
+    - echo "==== Создаём SSH ключ ===="
+    - mkdir -p ~/.ssh
+    - echo "$DEPLOY_KEY" > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+
+    - echo "==== Добавляем сервер в known_hosts ===="
+    - ssh-keyscan -H "$APP_SERVER_IP" >> ~/.ssh/known_hosts
+
+    - echo "==== Генерируем inventory.ini ===="
+    - |
+      cat <<EOF > infra/ansible/inventory.ini
+      [app]
+      server ansible_host=${APP_SERVER_IP} ansible_user=${APP_SERVER_USER} ansible_ssh_private_key_file=~/.ssh/id_rsa
+      EOF
+
+    - echo "==== Запускаем Ansible playbook ===="
+    - cd infra/ansible
+    - ansible-playbook site.yml -i inventory.ini

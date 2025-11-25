@@ -1,0 +1,14 @@
+---
+- name: Install and configure GitLab CE
+  hosts: app
+  become: yes
+  vars:
+    gitlab_external_url: "http://cikapibarartest.duckdns.org"
+  roles:
+    - gitlab
+
+- name: Install and configure GitLab Runner
+  hosts: app
+  become: yes
+  roles:
+    - runner

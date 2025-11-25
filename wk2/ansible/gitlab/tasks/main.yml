@@ -1,0 +1,43 @@
+---
+- name: Install required packages
+  apt:
+    name:
+      - curl
+      - ca-certificates
+      - tzdata
+      - openssh-server
+    update_cache: yes
+
+- name: Add GitLab repository script
+  get_url:
+    url: https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh
+    dest: /tmp/gitlab_repo.sh
+    mode: '0755'
+
+- name: Add GitLab repository
+  command: bash /tmp/gitlab_repo.sh
+
+- name: Install GitLab CE
+  apt:
+    name: gitlab-ce
+    state: present
+
+- name: Deploy gitlab.rb template
+  template:
+    src: gitlab.rb.j2
+    dest: /etc/gitlab/gitlab.rb
+    mode: '0644'
+#  notify:
+#    - reconfigure gitlab
+
+- name: reconfigure gitlab
+  command: gitlab-ctl reconfigure
+
+- name: Wait until GitLab is responding
+  uri:
+    url: "http://127.0.0.1/users/sign_in"
+    status_code: 200
+  register: result
+  retries: 30
+  delay: 30
+  until: result.status == 200
