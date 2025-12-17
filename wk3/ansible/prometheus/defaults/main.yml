@@ -1,0 +1,11 @@
+---
+  prometheus_version: "2.53.0"
+  prometheus_port: 9090
+  prometheus_user: prometheus
+  prometheus_dir: /etc/prometheus
+  prometheus_data: /var/lib/prometheus
+  scrape_interval: "15s"
+  targets:
+    - "localhost:9100"
+    - "app_server_ip:9100"
+    - "app_server_ip:8080"

@@ -1,4 +1,9 @@
 - hosts: app
   become: true
   roles:
+<<<<<<< HEAD
     - role: roles
+=======
+    - roles
+    - exporters
+>>>>>>> c701433 (monitoring)

@@ -1,0 +1,100 @@
+---
+- name: Install dependencies
+  apt:
+    name:
+      - adduser
+      - libfontconfig1
+    state: present
+    update_cache: yes
+
+- name: Copy Grafana package
+  copy:
+    src: ./grafana_11.1.4_amd64.deb
+    dest: /tmp/grafana_11.1.4_amd64.deb
+    mode: '0644'
+
+- name: Install Grafana from .deb
+  apt:
+    deb: /tmp/grafana_11.1.4_amd64.deb
+
+- name: Ensure Grafana service is enabled and started
+  systemd:
+    name: grafana-server
+    enabled: yes
+    state: started
+
+# --- Dashboard provisioning setup ---
+
+- name: Create dashboards directory
+  file:
+    path: /var/lib/grafana/dashboards
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: '0755'
+
+- name: Copy prebuilt dashboard JSON
+  copy:
+    src: ./system-overview.json
+    dest: /var/lib/grafana/dashboards/system-overview.json
+    owner: grafana
+    group: grafana
+    mode: '0644'
+
+# --- Datasource provisioning setup ---
+
+- name: Create datasource provisioning directory
+  file:
+    path: /etc/grafana/provisioning/datasources
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: '0755'
+
+- name: Configure Prometheus datasource
+  copy:
+    dest: /etc/grafana/provisioning/datasources/prometheus.yml
+    owner: grafana
+    group: grafana
+    mode: '0644'
+    content: |
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          access: proxy
+          url: http://localhost:9090
+          isDefault: true
+
+# --- Dashboard provisioning configuration ---
+
+- name: Create dashboard provisioning directory
+  file:
+    path: /etc/grafana/provisioning/dashboards
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: '0755'
+
+- name: Configure dashboard provisioning
+  copy:
+    dest: /etc/grafana/provisioning/dashboards/dashboards.yml
+    owner: grafana
+    group: grafana
+    mode: '0644'
+    content: |
+      apiVersion: 1
+      providers:
+        - name: 'default'
+          orgId: 1
+          folder: ''
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards
+
+- name: Restart Grafana to apply new configuration
+  systemd:
+    name: grafana-server
+    state: restarted

@@ -1,0 +1,73 @@
+---
+
+- name: Ensure Prometheus user exists
+  user:
+    name: '{{ prometheus_user }}'
+    shell: /usr/sbin/nologin
+#    home: /home/prometheus
+    system: yes
+    create_home: yes
+
+- name: Create Prometheus directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: '{{ prometheus_user }}'
+    group: '{{ prometheus_user }}'
+    mode: '0755'
+  loop:
+    - '{{ prometheus_dir }}'
+    - '{{ prometheus_data }}'
+
+- name: Install dependencies
+  apt:
+    name:
+      - wget
+      - tar
+    update_cache: yes
+    state: present
+
+- name: Download Prometheus
+  get_url:
+    url: "https://github.com/prometheus/prometheus/releases/download/v2.53.0/prometheus-2.53.0.linux-amd64.tar.gz"
+    dest: /tmp/prometheus.tar.gz
+
+- name: Extract Prometheus
+  unarchive:
+    src: /tmp/prometheus.tar.gz
+    dest: /usr/local/bin/
+    remote_src: true
+    extra_opts: ['--strip-components=1']
+
+- name: Deploy Prometheus configuration
+  copy:
+    src: ./prometheus.yml
+    dest: "{{ prometheus_dir }}/prometheus.yml"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_user }}"
+    mode: '0644'
+- name: Create systemd unit
+  copy:
+    dest: /etc/systemd/system/prometheus.service
+    content: |
+      [Unit]
+      Description=Prometheus
+      After=network.target
+
+      [Service]
+      User={{ prometheus_user }}
+      Group={{ prometheus_user }}
+      ExecStart=/usr/local/bin/prometheus \
+        --config.file={{ prometheus_dir }}/prometheus.yml \
+        --storage.tsdb.path={{ prometheus_data }}/prometheus \
+        --web.listen-address=:{{ prometheus_port }}
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Start and enable Prometheus
+  systemd:
+    name: prometheus
+    enabled: yes
+    state: started
